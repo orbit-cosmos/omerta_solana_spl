@@ -1,13 +1,14 @@
 
 
 use anchor_lang::prelude::*;
+
 use anchor_spl::{
     associated_token::AssociatedToken,
     metadata::{
         create_metadata_accounts_v3, mpl_token_metadata::types::DataV2, CreateMetadataAccountsV3,
-        Metadata as Metaplex,
+        Metadata,
     },
-    token::{mint_to, Mint, MintTo, Token, TokenAccount, Transfer,Approve},
+    token::{Mint, MintTo, Token, TokenAccount, Transfer,Approve},
 };
 
 declare_id!("8SjEb93bjt9VrcdYDpzLiqpTycp7GgLM3pHQBAHE6ELP");
@@ -16,6 +17,7 @@ declare_id!("8SjEb93bjt9VrcdYDpzLiqpTycp7GgLM3pHQBAHE6ELP");
 pub mod omerta_solana_spl {
 
     use super::*;
+
     pub fn initialize(ctx: Context<InitToken>, metadata: InitTokenParams) -> Result<()> {
         let seeds = &["mint".as_bytes(), &[ctx.bumps.mint]];
         let signer = [&seeds[..]];
@@ -45,9 +47,7 @@ pub mod omerta_solana_spl {
         );
 
         create_metadata_accounts_v3(metadata_ctx, token_data, false, true, None)?;
-
-        msg!("Token mint created successfully.");
-
+        
         Ok(())
     }
 
@@ -55,7 +55,7 @@ pub mod omerta_solana_spl {
         let seeds = &["mint".as_bytes(), &[ctx.bumps.mint]];
         let signer = [&seeds[..]];
 
-        mint_to(
+        anchor_spl::token::mint_to(
             CpiContext::new_with_signer(
                 ctx.accounts.token_program.to_account_info(),
                 MintTo {
@@ -125,7 +125,7 @@ pub struct InitToken<'info> {
     pub rent: Sysvar<'info, Rent>,
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
-    pub token_metadata_program: Program<'info, Metaplex>,
+    pub token_metadata_program: Program<'info, Metadata>,
 }
 
 #[derive(Accounts)]
