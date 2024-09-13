@@ -1,6 +1,5 @@
 
 
-// 1. Import dependencies
 use anchor_lang::prelude::*;
 use anchor_spl::{
     associated_token::AssociatedToken,
@@ -8,16 +7,16 @@ use anchor_spl::{
         create_metadata_accounts_v3, mpl_token_metadata::types::DataV2, CreateMetadataAccountsV3,
         Metadata as Metaplex,
     },
-    token::{mint_to, transfer, Mint, MintTo, Token, TokenAccount, Transfer},
+    token::{mint_to, Mint, MintTo, Token, TokenAccount, Transfer,Approve},
 };
 
 declare_id!("8SjEb93bjt9VrcdYDpzLiqpTycp7GgLM3pHQBAHE6ELP");
 
-// 3. Define the program and instructions
 #[program]
 pub mod omerta_solana_spl {
+
     use super::*;
-    pub fn init_token(ctx: Context<InitToken>, metadata: InitTokenParams) -> Result<()> {
+    pub fn initialize(ctx: Context<InitToken>, metadata: InitTokenParams) -> Result<()> {
         let seeds = &["mint".as_bytes(), &[ctx.bumps.mint]];
         let signer = [&seeds[..]];
 
@@ -72,14 +71,30 @@ pub mod omerta_solana_spl {
         Ok(())
     }
 
-    pub fn transfer_tokens(ctx: Context<TransferToken>, amount: u64) -> Result<()> {
-        transfer(
+    pub fn transfer(ctx: Context<TokenContext>, amount: u64) -> Result<()> {
+        anchor_spl::token::transfer(
             CpiContext::new(
                 ctx.accounts.token_program.to_account_info(),
                 Transfer {
-                    authority: ctx.accounts.signer.to_account_info(),
-                    from: ctx.accounts.from_account.to_account_info(),
-                    to: ctx.accounts.to_account.to_account_info(),
+                    authority: ctx.accounts.from.to_account_info(),
+                    from: ctx.accounts.from_ata.to_account_info(),
+                    to: ctx.accounts.to_ata.to_account_info(),
+                },
+            ),
+            amount,
+        )?;
+        Ok(())
+    }
+
+
+    pub fn approve(ctx: Context<TokenContext>, amount: u64) -> Result<()> {
+        anchor_spl::token::approve(
+            CpiContext::new(
+                ctx.accounts.token_program.to_account_info(),
+                Approve {
+                    to: ctx.accounts.from_ata.to_account_info(),
+                    authority: ctx.accounts.from.to_account_info(),
+                    delegate: ctx.accounts.to_ata.to_account_info(),
                 },
             ),
             amount,
@@ -88,7 +103,6 @@ pub mod omerta_solana_spl {
     }
 }
 
-// 4. Define the context for each instruction
 #[derive(Accounts)]
 #[instruction(
     params: InitTokenParams
@@ -139,20 +153,18 @@ pub struct MintTokens<'info> {
 }
 
 #[derive(Accounts)]
-pub struct TransferToken<'info> {
+pub struct TokenContext<'info> {
+
     #[account(mut)]
-    pub mint_token: Account<'info, Mint>,
+    pub from_ata: Account<'info, TokenAccount>,
+    
     #[account(mut)]
-    pub from_account: Account<'info, TokenAccount>,
-    #[account(mut)]
-    pub to_account: Account<'info, TokenAccount>,
-    #[account(mut)]
-    pub signer: Signer<'info>,
-    pub system_program: Program<'info, System>,
+    pub to_ata: Account<'info, TokenAccount>,
+
+    pub from: Signer<'info>,
     pub token_program: Program<'info, Token>,
-    pub associate_token_program: Program<'info, AssociatedToken>,
 }
-// 5. Define the init token params
+
 #[derive(AnchorSerialize, AnchorDeserialize, Debug, Clone)]
 pub struct InitTokenParams {
     pub name: String,
@@ -160,3 +172,5 @@ pub struct InitTokenParams {
     pub uri: String,
     pub decimals: u8,
 }
+
+

@@ -5,7 +5,8 @@ import * as web3 from "@solana/web3.js"
 import assert from "assert"
 import { Program } from "@coral-xyz/anchor";
 import {BN} from "bn.js"
-import { createAccount } from "@solana/spl-token";
+import { createAssociatedTokenAccount } from "@solana/spl-token";
+
 async function confirmTransaction(tx) {
   const latestBlockHash = await anchor.getProvider().connection.getLatestBlockhash();
   await anchor.getProvider().connection.confirmTransaction({
@@ -18,6 +19,20 @@ async function confirmTransaction(tx) {
 async function airdropSol(publicKey, amount) {
 let airdropTx = await anchor.getProvider().connection.requestAirdrop(publicKey, amount);
 await confirmTransaction(airdropTx);
+}
+
+
+
+async function getSolBalance(pg,address):Promise<number>{
+  let initialBalance: number;
+  try {
+    const balance = (await pg.provider.connection.getTokenAccountBalance(address))
+    initialBalance = balance.value.uiAmount;
+  } catch {
+    // Token account not yet initiated has 0 balance
+    initialBalance = 0;
+  } 
+  return initialBalance;
 }
 
 describe("OmertaSolanaSpl", async() => {
@@ -38,6 +53,9 @@ describe("OmertaSolanaSpl", async() => {
   
     // Data for our tests
     const payer = pg.provider.publicKey;
+    let reciever = anchor.web3.Keypair.generate()
+
+
     const metadata = {
       name: "lamport Token",
       symbol: "LMT",
@@ -73,17 +91,14 @@ describe("OmertaSolanaSpl", async() => {
         tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID,
       };
   
-      const txHash = await pg.methods
-        .initToken(metadata)
+      await pg.methods
+        .initialize(metadata)
         .accounts(context)
         .rpc();
   
-      console.log(`  https://explorer.solana.com/tx/${txHash}?cluster=devnet`);
       const newInfo = await pg.provider.connection.getAccountInfo(mint);
       assert(newInfo, "  Mint should be initialized.");
-
-      
-
+      // console.log("program address",pg.programId.toString());
 
     });
   
@@ -94,14 +109,7 @@ describe("OmertaSolanaSpl", async() => {
         owner: payer,
       });
   
-      let initialBalance: number;
-      try {
-        const balance = (await pg.provider.connection.getTokenAccountBalance(destination))
-        initialBalance = balance.value.uiAmount;
-      } catch {
-        // Token account not yet initiated has 0 balance
-        initialBalance = 0;
-      } 
+      let initialBalance = await getSolBalance(pg,destination)
       
       const context = {
         mint,
@@ -113,12 +121,11 @@ describe("OmertaSolanaSpl", async() => {
         associatedTokenProgram: anchor.utils.token.ASSOCIATED_PROGRAM_ID,
       };
   
-      const txHash = await pg.methods
+      await pg.methods
         .mintTokens(new BN(mintAmount * 10 ** metadata.decimals))
         .accounts(context)
         .rpc();
-      console.log(`  https://explorer.solana.com/tx/${txHash}?cluster=devnet`);
-  
+      
       const postBalance = (
         await pg.provider.connection.getTokenAccountBalance(destination)
       ).value.uiAmount;
@@ -131,62 +138,41 @@ describe("OmertaSolanaSpl", async() => {
    
     it("transfer tokens", async () => {
 
-      const from =  anchor.utils.token.associatedAddress({
+      const from_ata =  anchor.utils.token.associatedAddress({
         mint: mint,
         owner: payer,
       });
   
-      let initialBalance: number;
-      try {
-        const balance = (await pg.provider.connection.getTokenAccountBalance(from))
-        initialBalance = balance.value.uiAmount;
-      } catch {
-        // Token account not yet initiated has 0 balance
-        initialBalance = 0;
-      } 
+      let initialBalance = await getSolBalance(pg,from_ata)
 
 
    
-
-      let reciever = anchor.web3.Keypair.generate()
       await airdropSol(reciever.publicKey, 1e9); // 1 SOL
-      let recieverTokenAccountKeypair = anchor.web3.Keypair.generate()
 
-      await createAccount(pg.provider.connection,reciever,mint,reciever.publicKey,recieverTokenAccountKeypair);
+
+      const reciever_ata = await createAssociatedTokenAccount(pg.provider.connection,reciever,mint,reciever.publicKey);
   
 
 
-      let receiverInitialBalance: number;
-      try {
-        const balance = (await pg.provider.connection.getTokenAccountBalance(recieverTokenAccountKeypair.publicKey))
-        receiverInitialBalance = balance.value.uiAmount;
-      } catch {
-        // Token account not yet initiated has 0 balance
-        receiverInitialBalance = 0;
-      } 
+      let receiverInitialBalance = await getSolBalance(pg,reciever_ata)
 
       const context = {
-        mintToken:mint,
-        fromAccount:from,
-        toAccount:recieverTokenAccountKeypair.publicKey,
-        systemProgram: web3.SystemProgram.programId,
+        fromAta:from_ata,
+        toAta:reciever_ata,
         tokenProgram: anchor.utils.token.TOKEN_PROGRAM_ID,
-        associatedTokenProgram: anchor.utils.token.ASSOCIATED_PROGRAM_ID,
       };
   
-      const txHash = await pg.methods
-        .transferTokens(new BN(mintAmount * 10 ** metadata.decimals))
+       await pg.methods
+        .transfer(new BN(mintAmount * 10 ** metadata.decimals))
         .accounts(context)
         .rpc();
-      console.log(`  https://explorer.solana.com/tx/${txHash}?cluster=devnet`);
-  
-
+     
 
       /**
       * check sender balance
       */ 
       const postBalance = (
-        await pg.provider.connection.getTokenAccountBalance(from)
+        await pg.provider.connection.getTokenAccountBalance(from_ata)
       ).value.uiAmount;
       assert.equal(
         initialBalance - mintAmount,
@@ -199,7 +185,7 @@ describe("OmertaSolanaSpl", async() => {
     */ 
 
       const receiverPostBalance = (
-        await pg.provider.connection.getTokenAccountBalance(recieverTokenAccountKeypair.publicKey)
+        await pg.provider.connection.getTokenAccountBalance(reciever_ata)
       ).value.uiAmount;
       assert.equal(
         receiverInitialBalance + mintAmount,
@@ -209,6 +195,53 @@ describe("OmertaSolanaSpl", async() => {
 
     });
 
+
+
+    it("approve tokens", async () => {
+
+      const from_ata =  anchor.utils.token.associatedAddress({
+        mint: mint,
+        owner: payer,
+      });
+      
+     const reciever_ata = anchor.utils.token.associatedAddress({
+        mint: mint,
+        owner: reciever.publicKey,
+      });
+
+      const context = {
+        fromAta:from_ata,
+        toAta:reciever_ata,
+        tokenProgram: anchor.utils.token.TOKEN_PROGRAM_ID,
+      };
+      
+      await pg.methods
+        .approve(new BN(mintAmount * 2 ** metadata.decimals))
+        .accounts(context)
+        .rpc();
+        
+
+
+    
+      
+    
+      const context1 = {
+        fromAta:reciever_ata,
+        toAta:from_ata,
+        from:reciever.publicKey,
+        tokenProgram: anchor.utils.token.TOKEN_PROGRAM_ID,
+      };
+
+
+      
+     await pg.methods
+        .transfer(new BN(mintAmount * 2 ** metadata.decimals))
+        .accounts(context1)
+        .signers([reciever])
+        .rpc();
+  
+
+    });
 });
 
 
