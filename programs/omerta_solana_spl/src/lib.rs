@@ -1,5 +1,3 @@
-
-
 use anchor_lang::prelude::*;
 
 use anchor_spl::{
@@ -47,11 +45,11 @@ pub mod omerta_solana_spl {
         );
 
         create_metadata_accounts_v3(metadata_ctx, token_data, false, true, None)?;
-        
+
         Ok(())
     }
 
-    pub fn mint_tokens(ctx: Context<MintTokens>, quantity: u64) -> Result<()> {
+    pub fn mint_tokens(ctx: Context<MintTokens>, amount: u64) -> Result<()> {
         let seeds = &["mint".as_bytes(), &[ctx.bumps.mint]];
         let signer = [&seeds[..]];
 
@@ -65,13 +63,13 @@ pub mod omerta_solana_spl {
                 },
                 &signer,
             ),
-            quantity,
+            amount,
         )?;
 
         Ok(())
     }
 
-    pub fn transfer(ctx: Context<TokenContext>, amount: u64) -> Result<()> {
+    pub fn transfer(ctx: Context<TransferToken>, amount: u64) -> Result<()> {
         anchor_spl::token::transfer(
             CpiContext::new(
                 ctx.accounts.token_program.to_account_info(),
@@ -86,15 +84,17 @@ pub mod omerta_solana_spl {
         Ok(())
     }
 
-
-    pub fn approve(ctx: Context<TokenContext>, amount: u64) -> Result<()> {
+    pub fn approve(ctx: Context<ApproveToken>, amount: u64) -> Result<()> {
         anchor_spl::token::approve(
             CpiContext::new(
                 ctx.accounts.token_program.to_account_info(),
                 Approve {
                     to: ctx.accounts.from_ata.to_account_info(),
                     authority: ctx.accounts.from.to_account_info(),
-                    delegate: ctx.accounts.to_ata.to_account_info(),
+                    delegate: ctx.accounts.delegate.to_account_info(),
+
+
+                    
                 },
             ),
             amount,
@@ -153,7 +153,7 @@ pub struct MintTokens<'info> {
 }
 
 #[derive(Accounts)]
-pub struct TokenContext<'info> {
+pub struct TransferToken<'info> {
 
     #[account(mut)]
     pub from_ata: Account<'info, TokenAccount>,
@@ -174,3 +174,14 @@ pub struct InitTokenParams {
 }
 
 
+#[derive(Accounts)]
+pub struct ApproveToken<'info> {
+
+    #[account(mut)]
+    pub from_ata: Account<'info, TokenAccount>,
+    
+    pub delegate: Signer<'info>,
+
+    pub from: Signer<'info>,
+    pub token_program: Program<'info, Token>,
+}

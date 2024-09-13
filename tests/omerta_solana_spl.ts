@@ -1,5 +1,4 @@
 import { OmertaSolanaSpl } from "../target/types/omerta_solana_spl";
-
 import * as anchor from "@coral-xyz/anchor";
 import * as web3 from "@solana/web3.js"
 import assert from "assert"
@@ -7,7 +6,7 @@ import { Program } from "@coral-xyz/anchor";
 import {BN} from "bn.js"
 import { createAssociatedTokenAccount } from "@solana/spl-token";
 
-async function confirmTransaction(tx) {
+async function confirmTransaction(tx:string) {
   const latestBlockHash = await anchor.getProvider().connection.getLatestBlockhash();
   await anchor.getProvider().connection.confirmTransaction({
     blockhash: latestBlockHash.blockhash,
@@ -15,15 +14,13 @@ async function confirmTransaction(tx) {
     signature: tx,
   });
 }
-// this airdrops sol to an address
-async function airdropSol(publicKey, amount) {
+
+async function airdropSol(publicKey:anchor.web3.PublicKey, amount:number) {
 let airdropTx = await anchor.getProvider().connection.requestAirdrop(publicKey, amount);
 await confirmTransaction(airdropTx);
 }
 
-
-
-async function getSolBalance(pg,address):Promise<number>{
+async function getSolBalance(pg:Program<OmertaSolanaSpl>,address:anchor.web3.PublicKey):Promise<number>{
   let initialBalance: number;
   try {
     const balance = (await pg.provider.connection.getTokenAccountBalance(address))
@@ -41,17 +38,14 @@ describe("OmertaSolanaSpl", async() => {
 
   const pg = anchor.workspace.OmertaSolanaSpl as Program<OmertaSolanaSpl>;
 
-
     // Metaplex Constants
     const METADATA_SEED = "metadata";
     const TOKEN_METADATA_PROGRAM_ID = new web3.PublicKey(
       "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s" // metaplex metadata program id
     )
 
-    // Constants from our program
     const MINT_SEED = "mint";
   
-    // Data for our tests
     const payer = pg.provider.publicKey;
     let reciever = anchor.web3.Keypair.generate()
 
@@ -62,7 +56,7 @@ describe("OmertaSolanaSpl", async() => {
       uri: "https://5vfxc4tr6xoy23qefqbj4qx2adzkzapneebanhcalf7myvn5gzja.arweave.net/7UtxcnH13Y1uBCwCnkL6APKsge0hAgacQFl-zFW9NlI",
       decimals: 9,
     };
-    const mintAmount = 10;
+
     const [mint] = web3.PublicKey.findProgramAddressSync(
       [Buffer.from(MINT_SEED)],
       pg.programId
@@ -79,8 +73,6 @@ describe("OmertaSolanaSpl", async() => {
 
 
     it("initialize", async () => {
-
-
       const context = {
         metadata: metadataAddress,
         mint,
@@ -103,13 +95,13 @@ describe("OmertaSolanaSpl", async() => {
     });
   
     it("mint tokens", async () => {
+      const mintAmount = 12;
 
       const destination =  anchor.utils.token.associatedAddress({
         mint: mint,
         owner: payer,
       });
   
-      let initialBalance = await getSolBalance(pg,destination)
       
       const context = {
         mint,
@@ -130,31 +122,25 @@ describe("OmertaSolanaSpl", async() => {
         await pg.provider.connection.getTokenAccountBalance(destination)
       ).value.uiAmount;
       assert.equal(
-        initialBalance + mintAmount,
+        mintAmount,
         postBalance,
         "Post balance should equal initial plus mint amount"
       );
     });
    
     it("transfer tokens", async () => {
-
+      const transferAmount = 10
       const from_ata =  anchor.utils.token.associatedAddress({
         mint: mint,
         owner: payer,
       });
   
       let initialBalance = await getSolBalance(pg,from_ata)
-
-
    
       await airdropSol(reciever.publicKey, 1e9); // 1 SOL
 
-
       const reciever_ata = await createAssociatedTokenAccount(pg.provider.connection,reciever,mint,reciever.publicKey);
   
-
-
-      let receiverInitialBalance = await getSolBalance(pg,reciever_ata)
 
       const context = {
         fromAta:from_ata,
@@ -163,7 +149,7 @@ describe("OmertaSolanaSpl", async() => {
       };
   
        await pg.methods
-        .transfer(new BN(mintAmount * 10 ** metadata.decimals))
+        .transfer(new BN(transferAmount * 10 ** metadata.decimals))
         .accounts(context)
         .rpc();
      
@@ -175,7 +161,7 @@ describe("OmertaSolanaSpl", async() => {
         await pg.provider.connection.getTokenAccountBalance(from_ata)
       ).value.uiAmount;
       assert.equal(
-        initialBalance - mintAmount,
+        initialBalance - transferAmount,
         postBalance,
         "Post balance should equal initial plus mint amount"
       );
@@ -188,17 +174,15 @@ describe("OmertaSolanaSpl", async() => {
         await pg.provider.connection.getTokenAccountBalance(reciever_ata)
       ).value.uiAmount;
       assert.equal(
-        receiverInitialBalance + mintAmount,
+        transferAmount,
         receiverPostBalance,
         "Post balance should equal initial plus mint amount"
       );
 
     });
 
-
-
     it("approve tokens", async () => {
-
+      const approveAmount = 2;
       const from_ata =  anchor.utils.token.associatedAddress({
         mint: mint,
         owner: payer,
@@ -211,35 +195,55 @@ describe("OmertaSolanaSpl", async() => {
 
       const context = {
         fromAta:from_ata,
-        toAta:reciever_ata,
+        delegate:reciever.publicKey,
         tokenProgram: anchor.utils.token.TOKEN_PROGRAM_ID,
       };
       
       await pg.methods
-        .approve(new BN(mintAmount * 2 ** metadata.decimals))
+        .approve(new BN(approveAmount * 10 ** metadata.decimals))
         .accounts(context)
+        .signers([reciever])
         .rpc();
-        
 
-
-    
-      
-    
       const context1 = {
-        fromAta:reciever_ata,
-        toAta:from_ata,
+        fromAta:from_ata,
+        toAta:reciever_ata,
         from:reciever.publicKey,
         tokenProgram: anchor.utils.token.TOKEN_PROGRAM_ID,
       };
 
 
-      
+
+      const receiverBalance = (
+        await pg.provider.connection.getTokenAccountBalance(reciever_ata)
+      ).value.uiAmount;
+
      await pg.methods
-        .transfer(new BN(mintAmount * 2 ** metadata.decimals))
+        .transfer(new BN(approveAmount * 10 ** metadata.decimals))
         .accounts(context1)
         .signers([reciever])
         .rpc();
   
+
+        const senderPostBalance = (
+          await pg.provider.connection.getTokenAccountBalance(from_ata)
+        ).value.uiAmount;
+        assert.equal(
+          0,
+          senderPostBalance,
+          "Post balance should equal initial plus mint amount"
+        );
+
+
+        const receiverPostBalance = (
+          await pg.provider.connection.getTokenAccountBalance(reciever_ata)
+        ).value.uiAmount;
+    
+        assert.equal(
+          receiverPostBalance,
+          receiverBalance+approveAmount,
+          "Post balance should equal initial plus mint amount"
+        );
 
     });
 });
