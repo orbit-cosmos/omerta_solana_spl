@@ -179,9 +179,10 @@ pub struct ApproveToken<'info> {
 
     #[account(mut)]
     pub from_ata: Account<'info, TokenAccount>,
+    /// CHECK: This is an unchecked account because the delegate doesn't need to be of any specific type.
+    pub delegate: UncheckedAccount<'info>,
     
-    pub delegate: Signer<'info>,
-
+    #[account(mut)]
     pub from: Signer<'info>,
     pub token_program: Program<'info, Token>,
 }

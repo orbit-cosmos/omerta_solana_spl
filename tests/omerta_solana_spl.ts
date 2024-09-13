@@ -202,7 +202,6 @@ describe("OmertaSolanaSpl", async() => {
       await pg.methods
         .approve(new BN(approveAmount * 10 ** metadata.decimals))
         .accounts(context)
-        .signers([reciever])
         .rpc();
 
       const context1 = {
@@ -244,7 +243,6 @@ describe("OmertaSolanaSpl", async() => {
           receiverBalance+approveAmount,
           "Post balance should equal initial plus mint amount"
         );
-
     });
 });
 
