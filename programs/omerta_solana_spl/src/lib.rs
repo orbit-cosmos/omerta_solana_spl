@@ -20,7 +20,7 @@ pub mod omerta_solana_spl {
         let seeds = &["mint".as_bytes(), &[ctx.bumps.mint]];
         let signer = [&seeds[..]];
 
-        let token_data: DataV2 = DataV2 {
+        let token_data = DataV2 {
             name: metadata.name,
             symbol: metadata.symbol,
             uri: metadata.uri,
@@ -91,10 +91,7 @@ pub mod omerta_solana_spl {
                 Approve {
                     to: ctx.accounts.from_ata.to_account_info(),
                     authority: ctx.accounts.from.to_account_info(),
-                    delegate: ctx.accounts.delegate.to_account_info(),
-
-
-                    
+                    delegate: ctx.accounts.delegate.to_account_info(),   
                 },
             ),
             amount,
@@ -146,7 +143,6 @@ pub struct MintTokens<'info> {
     pub destination: Account<'info, TokenAccount>,
     #[account(mut)]
     pub payer: Signer<'info>,
-    pub rent: Sysvar<'info, Rent>,
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
@@ -176,13 +172,14 @@ pub struct InitTokenParams {
 
 #[derive(Accounts)]
 pub struct ApproveToken<'info> {
+    #[account(mut)]
+    pub from: Signer<'info>,
 
     #[account(mut)]
     pub from_ata: Account<'info, TokenAccount>,
+  
     /// CHECK: This is an unchecked account because the delegate doesn't need to be of any specific type.
-    pub delegate: UncheckedAccount<'info>,
-    
-    #[account(mut)]
-    pub from: Signer<'info>,
+    pub delegate: UncheckedAccount<'info>,  
+ 
     pub token_program: Program<'info, Token>,
 }
