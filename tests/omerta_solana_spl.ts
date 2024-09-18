@@ -47,8 +47,9 @@ describe("OmertaSolanaSpl", async() => {
     const MINT_SEED = "mint";
   
     const payer = pg.provider.publicKey;
-    let reciever = anchor.web3.Keypair.generate()
+    const reciever = anchor.web3.Keypair.generate()
 
+    const mintAmount = 12;
 
     const metadata = {
       name: "lamport Token",
@@ -97,13 +98,11 @@ describe("OmertaSolanaSpl", async() => {
         .rpc();
   
       const newInfo = await pg.provider.connection.getAccountInfo(mint);
-      assert(newInfo, "  Mint should be initialized.");
-      // console.log("program address",pg.programId.toString());
+      assert(newInfo);
 
     });
   
     it("mint tokens", async () => {
-      const mintAmount = 12;
 
       const destination =  payer_ata;
   
@@ -139,23 +138,20 @@ describe("OmertaSolanaSpl", async() => {
       const transferAmount = 10
       const from_ata =  payer_ata;
   
-      let initialBalance = await getSplBalance(pg,from_ata)
    
 
       const reciever_ata = await createAssociatedTokenAccount(pg.provider.connection,reciever,mint,reciever.publicKey);
   
 
 
-       /**
-        * check receiver balance
-        */ 
-
-       const sendPreBalance = 
+   
+       const senderPreBalance = 
        await getSplBalance(pg,from_ata)
       assert.equal(
-       12,
-       sendPreBalance,
+        mintAmount,
+        senderPreBalance,
       );
+
       /**
       * check receiver balance
       */ 
@@ -186,7 +182,7 @@ describe("OmertaSolanaSpl", async() => {
       const postBalance = 
         await getSplBalance(pg,from_ata)
       assert.equal(
-        initialBalance - transferAmount,
+        senderPreBalance - transferAmount,
         postBalance,
         "Post balance should equal initial plus mint amount"
       );
