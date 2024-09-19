@@ -23,6 +23,7 @@ await confirmTransaction(airdropTx);
 async function getSplBalance(pg:Program<OmertaSolanaSpl>,address:anchor.web3.PublicKey):Promise<number>{
   let initialBalance: number;
   try {
+    
     const balance = (await pg.provider.connection.getTokenAccountBalance(address))
     initialBalance = balance.value.uiAmount;
   } catch {
@@ -132,6 +133,12 @@ describe("OmertaSolanaSpl", async() => {
         mintAmount,
         postBalance
       );
+
+      const totalSupply = await pg.provider.connection.getTokenSupply(mint)
+      assert.equal(
+        mintAmount * 10 ** metadata.decimals,
+        totalSupply.value.amount
+      );
     });
    
     it("transfer tokens", async () => {
@@ -184,7 +191,6 @@ describe("OmertaSolanaSpl", async() => {
       assert.equal(
         senderPreBalance - transferAmount,
         postBalance,
-        "Post balance should equal initial plus mint amount"
       );
 
     /**
@@ -196,7 +202,6 @@ describe("OmertaSolanaSpl", async() => {
       assert.equal(
         transferAmount,
         receiverPostBalance,
-        "Post balance should equal initial plus mint amount"
       );
 
     });
@@ -244,7 +249,6 @@ describe("OmertaSolanaSpl", async() => {
         assert.equal(
           0,
           senderPostBalance,
-          "Post balance should equal initial plus mint amount"
         );
 
 
@@ -255,11 +259,53 @@ describe("OmertaSolanaSpl", async() => {
         assert.equal(
           receiverPostBalance,
           receiverBalance+approveAmount,
-          "Post balance should equal initial plus mint amount"
         );
     });
-});
 
 
 
 
+    it("burn tokens", async () => {
+      const burnAmount = 2;
+      const preTotalSupply = await pg.provider.connection.getTokenSupply(mint)
+     const reciever_ata = anchor.utils.token.associatedAddress({
+        mint: mint,
+        owner: reciever.publicKey,
+      });
+
+      const context = {
+        from:reciever_ata,
+        mint:mint,
+        payer:reciever.publicKey,
+        tokenProgram: anchor.utils.token.TOKEN_PROGRAM_ID,
+      };
+      
+      const receiverPreBalance = 
+      await getSplBalance(pg,reciever_ata)
+    
+
+      await pg.methods
+        .burn(new BN(burnAmount * 10 ** metadata.decimals))
+        .accounts(context)
+        .signers([reciever])
+        .rpc();
+
+
+
+        const receiverPostBalance = 
+          await getSplBalance(pg,reciever_ata)
+        
+    
+        assert.equal(
+          receiverPostBalance,
+          receiverPreBalance-burnAmount,
+        );
+        const postTotalSupply = await pg.provider.connection.getTokenSupply(mint)
+
+        assert.equal(preTotalSupply.value.amount,Number(postTotalSupply.value.amount)+Number(burnAmount* 10 ** metadata.decimals))
+
+
+      });
+    });
+    
+    

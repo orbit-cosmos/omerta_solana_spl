@@ -6,13 +6,14 @@ use anchor_spl::{
         create_metadata_accounts_v3, mpl_token_metadata::types::DataV2, CreateMetadataAccountsV3,
         Metadata,
     },
-    token::{Mint, MintTo, Token, TokenAccount, Transfer,Approve},
+    token::{Mint, MintTo, Token, TokenAccount, Burn,Transfer,Approve},
 };
 
 declare_id!("8SjEb93bjt9VrcdYDpzLiqpTycp7GgLM3pHQBAHE6ELP");
 
 #[program]
 pub mod omerta_solana_spl {
+
 
     use super::*;
 
@@ -98,6 +99,22 @@ pub mod omerta_solana_spl {
         )?;
         Ok(())
     }
+
+    pub fn burn(ctx: Context<BurnTokens>, amount: u64) -> Result<()> {
+        anchor_spl::token::burn(
+            CpiContext::new(
+                ctx.accounts.token_program.to_account_info(),
+                Burn {
+                    mint: ctx.accounts.mint.to_account_info(),
+                    from: ctx.accounts.from.to_account_info(),   
+                    authority: ctx.accounts.payer.to_account_info(),
+                },
+            ),
+            amount,
+        )?;
+        Ok(())
+    }
+
 }
 
 #[derive(Accounts)]
@@ -181,5 +198,17 @@ pub struct ApproveToken<'info> {
     /// CHECK: This is an unchecked account because the delegate doesn't need to be of any specific type.
     pub delegate: UncheckedAccount<'info>,  
  
+    pub token_program: Program<'info, Token>,
+}
+
+
+#[derive(Accounts)]
+pub struct BurnTokens<'info> {
+    #[account(mut)]
+    pub mint: Account<'info, Mint>,
+    #[account(mut)]
+    pub from: Account<'info, TokenAccount>,
+    #[account(mut)]
+    pub payer: Signer<'info>,
     pub token_program: Program<'info, Token>,
 }
