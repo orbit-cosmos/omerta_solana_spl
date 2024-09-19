@@ -234,7 +234,6 @@ describe("OmertaSolanaSpl", async() => {
       };
 
 
-
       const receiverBalance = 
         await getSplBalance(pg,reciever_ata)
 
@@ -274,7 +273,7 @@ describe("OmertaSolanaSpl", async() => {
       });
 
       const context = {
-        from:reciever_ata,
+        fromAta:reciever_ata,
         mint:mint,
         payer:reciever.publicKey,
         tokenProgram: anchor.utils.token.TOKEN_PROGRAM_ID,

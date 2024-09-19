@@ -6,10 +6,13 @@ use anchor_spl::{
         create_metadata_accounts_v3, mpl_token_metadata::types::DataV2, CreateMetadataAccountsV3,
         Metadata,
     },
-    token::{Mint, MintTo, Token, TokenAccount, Burn,Transfer,Approve},
+    token::{Mint, Token, TokenAccount, MintTo, Burn, Transfer, Approve},
 };
 
 declare_id!("8SjEb93bjt9VrcdYDpzLiqpTycp7GgLM3pHQBAHE6ELP");
+
+const MAX_CAP: u64 = 1000000000;
+
 
 #[program]
 pub mod omerta_solana_spl {
@@ -51,6 +54,10 @@ pub mod omerta_solana_spl {
     }
 
     pub fn mint_tokens(ctx: Context<MintTokens>, amount: u64) -> Result<()> {
+
+        require!(ctx.accounts.mint.supply + amount >= MAX_CAP, OmertaError::CapExceed);
+
+
         let seeds = &["mint".as_bytes(), &[ctx.bumps.mint]];
         let signer = [&seeds[..]];
 
@@ -106,7 +113,7 @@ pub mod omerta_solana_spl {
                 ctx.accounts.token_program.to_account_info(),
                 Burn {
                     mint: ctx.accounts.mint.to_account_info(),
-                    from: ctx.accounts.from.to_account_info(),   
+                    from: ctx.accounts.from_ata.to_account_info(),   
                     authority: ctx.accounts.payer.to_account_info(),
                 },
             ),
@@ -114,6 +121,14 @@ pub mod omerta_solana_spl {
         )?;
         Ok(())
     }
+
+}
+
+
+#[error_code]
+enum OmertaError {
+    #[msg("Can not mint more, Cap Exceed")]
+    CapExceed,
 
 }
 
@@ -158,6 +173,7 @@ pub struct MintTokens<'info> {
         associated_token::authority = payer,
     )]
     pub destination: Account<'info, TokenAccount>,
+    
     #[account(mut)]
     pub payer: Signer<'info>,
     pub system_program: Program<'info, System>,
@@ -189,11 +205,11 @@ pub struct InitTokenParams {
 
 #[derive(Accounts)]
 pub struct ApproveToken<'info> {
-    #[account(mut)]
-    pub from: Signer<'info>,
 
     #[account(mut)]
     pub from_ata: Account<'info, TokenAccount>,
+
+    pub from: Signer<'info>,
   
     /// CHECK: This is an unchecked account because the delegate doesn't need to be of any specific type.
     pub delegate: UncheckedAccount<'info>,  
@@ -206,9 +222,10 @@ pub struct ApproveToken<'info> {
 pub struct BurnTokens<'info> {
     #[account(mut)]
     pub mint: Account<'info, Mint>,
+
     #[account(mut)]
-    pub from: Account<'info, TokenAccount>,
-    #[account(mut)]
+    pub from_ata: Account<'info, TokenAccount>,
+
     pub payer: Signer<'info>,
     pub token_program: Program<'info, Token>,
 }
