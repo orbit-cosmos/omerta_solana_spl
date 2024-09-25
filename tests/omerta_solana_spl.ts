@@ -50,13 +50,13 @@ describe("OmertaSolanaSpl", async() => {
     const payer = pg.provider.publicKey;
     const reciever = anchor.web3.Keypair.generate()
 
-    const mintAmount = 12;
+    const mintAmount = 100_000_000_000;
 
     const metadata = {
       name: "lamport Token",
       symbol: "LMT",
       uri: "https://5vfxc4tr6xoy23qefqbj4qx2adzkzapneebanhcalf7myvn5gzja.arweave.net/7UtxcnH13Y1uBCwCnkL6APKsge0hAgacQFl-zFW9NlI",
-      decimals: 9,
+      decimals: 6,
     };
 
     const [mint] = web3.PublicKey.findProgramAddressSync(
@@ -103,6 +103,32 @@ describe("OmertaSolanaSpl", async() => {
 
     });
   
+    it("mint tokens fail", async () => {
+
+      const destination =  payer_ata;
+      
+      const context = {
+        mint,
+        destination,
+        payer,
+        rent: web3.SYSVAR_RENT_PUBKEY,
+        systemProgram: web3.SystemProgram.programId,
+        tokenProgram: anchor.utils.token.TOKEN_PROGRAM_ID,
+        associatedTokenProgram: anchor.utils.token.ASSOCIATED_PROGRAM_ID,
+      };
+      try{
+          await pg.methods
+            .mintTokens(new BN(((mintAmount+1) * 10 ** metadata.decimals).toString()))
+            .accounts(context)
+            .rpc();
+      }catch(e){
+          if (e instanceof anchor.AnchorError){
+          assert(e.message.includes("CapExceed"))
+        }
+      }
+  
+    });
+    
     it("mint tokens", async () => {
 
       const destination =  payer_ata;
@@ -124,7 +150,7 @@ describe("OmertaSolanaSpl", async() => {
       };
   
       await pg.methods
-        .mintTokens(new BN(mintAmount * 10 ** metadata.decimals))
+        .mintTokens(new BN((mintAmount * 10 ** metadata.decimals).toString()))
         .accounts(context)
         .rpc();
       
@@ -174,11 +200,12 @@ describe("OmertaSolanaSpl", async() => {
       const context = {
         fromAta:from_ata,
         toAta:reciever_ata,
+        mint,
         tokenProgram: anchor.utils.token.TOKEN_PROGRAM_ID,
       };
   
        await pg.methods
-        .transfer(new BN(transferAmount * 10 ** metadata.decimals))
+        .transfer(new BN((transferAmount * 10 ** metadata.decimals).toString()))
         .accounts(context)
         .rpc();
      
@@ -222,13 +249,14 @@ describe("OmertaSolanaSpl", async() => {
       };
       
       await pg.methods
-        .approve(new BN(approveAmount * 10 ** metadata.decimals))
+        .approve(new BN((approveAmount * 10 ** metadata.decimals).toString()))
         .accounts(context)
         .rpc();
 
       const context1 = {
         fromAta:from_ata,
         toAta:reciever_ata,
+        mint,
         from:reciever.publicKey,
         tokenProgram: anchor.utils.token.TOKEN_PROGRAM_ID,
       };
@@ -236,9 +264,11 @@ describe("OmertaSolanaSpl", async() => {
 
       const receiverBalance = 
         await getSplBalance(pg,reciever_ata)
+        const senderBalance = 
+        await getSplBalance(pg,from_ata)
 
      await pg.methods
-        .transfer(new BN(approveAmount * 10 ** metadata.decimals))
+        .transfer(new BN((approveAmount * 10 ** metadata.decimals).toString()))
         .accounts(context1)
         .signers([reciever])
         .rpc();
@@ -246,7 +276,7 @@ describe("OmertaSolanaSpl", async() => {
 
         const senderPostBalance = await getSplBalance(pg,from_ata)
         assert.equal(
-          0,
+          senderBalance-approveAmount,
           senderPostBalance,
         );
 
@@ -260,9 +290,6 @@ describe("OmertaSolanaSpl", async() => {
           receiverBalance+approveAmount,
         );
     });
-
-
-
 
     it("burn tokens", async () => {
       const burnAmount = 2;
@@ -284,7 +311,7 @@ describe("OmertaSolanaSpl", async() => {
     
 
       await pg.methods
-        .burn(new BN(burnAmount * 10 ** metadata.decimals))
+        .burn(new BN((burnAmount * 10 ** metadata.decimals).toString()))
         .accounts(context)
         .signers([reciever])
         .rpc();

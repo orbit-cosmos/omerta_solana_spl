@@ -11,7 +11,7 @@ use anchor_spl::{
 
 declare_id!("8SjEb93bjt9VrcdYDpzLiqpTycp7GgLM3pHQBAHE6ELP");
 
-const MAX_CAP: u64 = 1000000000;
+const MAX_CAP: u64 = 100_000_000_000_000_000;
 
 
 #[program]
@@ -55,7 +55,7 @@ pub mod omerta_solana_spl {
 
     pub fn mint_tokens(ctx: Context<MintTokens>, amount: u64) -> Result<()> {
 
-        require!(ctx.accounts.mint.supply + amount >= MAX_CAP, OmertaError::CapExceed);
+        require!(ctx.accounts.mint.supply + amount <= MAX_CAP, OmertaError::CapExceed);
 
 
         let seeds = &["mint".as_bytes(), &[ctx.bumps.mint]];
@@ -78,6 +78,7 @@ pub mod omerta_solana_spl {
     }
 
     pub fn transfer(ctx: Context<TransferToken>, amount: u64) -> Result<()> {
+
         anchor_spl::token::transfer(
             CpiContext::new(
                 ctx.accounts.token_program.to_account_info(),
@@ -129,7 +130,6 @@ pub mod omerta_solana_spl {
 enum OmertaError {
     #[msg("Can not mint more, Cap Exceed")]
     CapExceed,
-
 }
 
 #[derive(Accounts)]
