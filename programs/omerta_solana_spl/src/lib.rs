@@ -11,12 +11,10 @@ use anchor_spl::{
 
 declare_id!("8SjEb93bjt9VrcdYDpzLiqpTycp7GgLM3pHQBAHE6ELP");
 
-const MAX_CAP: u64 = 100_000_000_000_000_000;
-
+const MAX_CAP: u64 = 100_000_000_000_000_000; // 6 decimals
 
 #[program]
 pub mod omerta_solana_spl {
-
 
     use super::*;
 
