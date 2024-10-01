@@ -6,12 +6,13 @@ use anchor_spl::{
         create_metadata_accounts_v3, mpl_token_metadata::types::DataV2, CreateMetadataAccountsV3,
         Metadata,
     },
-    token::{Mint, Token, TokenAccount, MintTo, Burn, Transfer, Approve},
+    token::{Mint, Token, TokenAccount, MintTo, Burn,Transfer, Approve},
 };
 
 declare_id!("8SjEb93bjt9VrcdYDpzLiqpTycp7GgLM3pHQBAHE6ELP");
 
-const MAX_CAP: u64 = 100_000_000_000_000_000; // 6 decimals
+pub const MAX_CAP: u64 = 100_000_000_000_000_000; // 6 decimals
+pub const MIN_SEED:&[u8] = "mint".as_bytes();
 
 #[program]
 pub mod omerta_solana_spl {
@@ -19,9 +20,12 @@ pub mod omerta_solana_spl {
     use super::*;
 
     pub fn initialize(ctx: Context<InitToken>, metadata: InitTokenParams) -> Result<()> {
-        let seeds = &["mint".as_bytes(), &[ctx.bumps.mint]];
+        // PDA seeds and bump to "sign" for CPI
+        let seeds = &[MIN_SEED, &[ctx.bumps.mint]];
         let signer = [&seeds[..]];
 
+
+        // On-chain token metadata for the mint
         let token_data = DataV2 {
             name: metadata.name,
             symbol: metadata.symbol,
@@ -46,7 +50,13 @@ pub mod omerta_solana_spl {
             &signer,
         );
 
-        create_metadata_accounts_v3(metadata_ctx, token_data, false, true, None)?;
+        create_metadata_accounts_v3(
+            metadata_ctx, // cpi context
+            token_data,// token metadata
+            true,  // is_mutable
+            true, // update_authority_is_signer
+            None // collection details
+        )?;
 
         Ok(())
     }
@@ -55,8 +65,8 @@ pub mod omerta_solana_spl {
 
         require!(ctx.accounts.mint.supply + amount <= MAX_CAP, OmertaError::CapExceed);
 
-
-        let seeds = &["mint".as_bytes(), &[ctx.bumps.mint]];
+        // PDA seeds and bump to "sign" for CPI
+        let seeds = &[MIN_SEED, &[ctx.bumps.mint]];
         let signer = [&seeds[..]];
 
         anchor_spl::token::mint_to(
@@ -121,6 +131,7 @@ pub mod omerta_solana_spl {
         Ok(())
     }
 
+  
 }
 
 
@@ -140,7 +151,7 @@ pub struct InitToken<'info> {
     pub metadata: UncheckedAccount<'info>,
     #[account(
         init,
-        seeds = [b"mint"],
+        seeds = [MIN_SEED],
         bump,
         payer = payer,
         mint::decimals = params.decimals,
@@ -159,7 +170,7 @@ pub struct InitToken<'info> {
 pub struct MintTokens<'info> {
     #[account(
         mut,
-        seeds = [b"mint"],
+        seeds = [MIN_SEED],
         bump,
         mint::authority = mint,
     )]
