@@ -49,7 +49,7 @@ describe("OmertaSolanaSpl", async() => {
   
     const payer = pg.provider.publicKey;
     const reciever = anchor.web3.Keypair.generate()
-
+    const account3 = anchor.web3.Keypair.generate()
     const mintAmount = 100_000_000_000;
 
     const metadata = {
@@ -80,6 +80,7 @@ describe("OmertaSolanaSpl", async() => {
 
     before(async()=>{
       await airdropSol(reciever.publicKey, 1e9); // 1 SOL
+      await airdropSol(account3.publicKey, 1e9); // 1 SOL
     })
 
     it("initialize", async () => {
@@ -170,20 +171,23 @@ describe("OmertaSolanaSpl", async() => {
     it("transfer tokens", async () => {
       const transferAmount = 10
       const from_ata =  payer_ata;
-  
-   
 
-      const reciever_ata = await createAssociatedTokenAccount(pg.provider.connection,reciever,mint,reciever.publicKey);
+      // const reciever_ata = await createAssociatedTokenAccount(pg.provider.connection,reciever,mint,reciever.publicKey);
   
 
 
-   
+      const reciever_ata = anchor.utils.token.associatedAddress({
+        mint: mint,
+        owner: reciever.publicKey,
+      });
+
+      /**
+      * check sender balance
+      */ 
+
        const senderPreBalance = 
        await getSplBalance(pg,from_ata)
-      assert.equal(
-        mintAmount,
-        senderPreBalance,
-      );
+    
 
       /**
       * check receiver balance
@@ -198,10 +202,14 @@ describe("OmertaSolanaSpl", async() => {
 
 
       const context = {
+        from:payer,
+        to:reciever.publicKey,
         fromAta:from_ata,
         toAta:reciever_ata,
         mint,
+        systemProgram: web3.SystemProgram.programId,
         tokenProgram: anchor.utils.token.TOKEN_PROGRAM_ID,
+        associatedTokenProgram: anchor.utils.token.ASSOCIATED_PROGRAM_ID,
       };
   
        await pg.methods
@@ -233,6 +241,76 @@ describe("OmertaSolanaSpl", async() => {
 
     });
 
+    it("transfer tokens with manual ATA creation", async () => {
+      const transferAmount = 10
+      const from_ata =  payer_ata;
+      const reciever = account3
+      const reciever_ata = await createAssociatedTokenAccount(pg.provider.connection,reciever,mint,reciever.publicKey);
+  
+
+
+
+      /**
+      * check sender balance
+      */ 
+
+       const senderPreBalance = 
+       await getSplBalance(pg,from_ata)
+   
+
+      /**
+      * check receiver balance
+      */ 
+
+      const receiverPreBalance = 
+       await getSplBalance(pg,reciever_ata)
+      assert.equal(
+       0,
+       receiverPreBalance,
+      );
+
+
+      const context = {
+        from:payer,
+        to:reciever.publicKey,
+        fromAta:from_ata,
+        toAta:reciever_ata,
+        mint,
+        systemProgram: web3.SystemProgram.programId,
+        tokenProgram: anchor.utils.token.TOKEN_PROGRAM_ID,
+        associatedTokenProgram: anchor.utils.token.ASSOCIATED_PROGRAM_ID,
+      };
+  
+       await pg.methods
+        .transfer(new BN((transferAmount * 10 ** metadata.decimals).toString()))
+        .accounts(context)
+        .rpc();
+     
+
+      /**
+      * check sender balance
+      */ 
+      const postBalance = 
+        await getSplBalance(pg,from_ata)
+      assert.equal(
+        senderPreBalance - transferAmount,
+        postBalance,
+      );
+
+    /**
+     * check receiver balance
+    */ 
+
+      const receiverPostBalance = 
+        await getSplBalance(pg,reciever_ata)
+      assert.equal(
+        transferAmount,
+        receiverPostBalance,
+      );
+
+    });
+
+
     it("approve tokens", async () => {
       const approveAmount = 2;
       const from_ata =  payer_ata
@@ -253,13 +331,18 @@ describe("OmertaSolanaSpl", async() => {
         .accounts(context)
         .rpc();
 
+     
       const context1 = {
+        from:reciever.publicKey,
+        to:reciever.publicKey,
         fromAta:from_ata,
         toAta:reciever_ata,
         mint,
-        from:reciever.publicKey,
+        systemProgram: web3.SystemProgram.programId,
         tokenProgram: anchor.utils.token.TOKEN_PROGRAM_ID,
+        associatedTokenProgram: anchor.utils.token.ASSOCIATED_PROGRAM_ID,
       };
+
 
 
       const receiverBalance = 

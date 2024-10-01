@@ -195,12 +195,23 @@ pub struct TransferToken<'info> {
 
     #[account(mut)]
     pub from_ata: Account<'info, TokenAccount>,
-    
-    #[account(mut)]
+       #[account(mut)]
+    pub mint: Account<'info, Mint>,
+    #[account(
+        init_if_needed,
+        payer = from,
+        associated_token::mint = mint,
+        associated_token::authority = to,
+        associated_token::token_program = token_program
+    )]
     pub to_ata: Account<'info, TokenAccount>,
-
+    #[account(mut)]
     pub from: Signer<'info>,
+    /// CHECK: recipient address
+    pub to:  UncheckedAccount<'info>,  
+    pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Debug, Clone)]
