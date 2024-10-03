@@ -6,7 +6,7 @@ use anchor_spl::{
         create_metadata_accounts_v3, mpl_token_metadata::types::DataV2, CreateMetadataAccountsV3,
         Metadata,
     },
-    token::{Mint, Token, TokenAccount, MintTo, Burn,Transfer, Approve, /*SetAuthority*/},
+    token::{Mint, Token, TokenAccount, MintTo, Burn,Transfer, Approve, SetAuthority},
 };
 
 
@@ -51,7 +51,8 @@ pub mod omerta_solana_spl {
                 update_authority: ctx.accounts.mint.to_account_info(),
                 mint: ctx.accounts.mint.to_account_info(),
                 metadata: ctx.accounts.metadata.to_account_info(),
-                mint_authority: ctx.accounts.mint.to_account_info(),
+                // mint_authority: ctx.accounts.mint.to_account_info(),
+                mint_authority: ctx.accounts.payer.to_account_info(),
                 system_program: ctx.accounts.system_program.to_account_info(),
                 rent: ctx.accounts.rent.to_account_info(),
             },
@@ -81,7 +82,8 @@ pub mod omerta_solana_spl {
             CpiContext::new_with_signer(
                 ctx.accounts.token_program.to_account_info(),
                 MintTo {
-                    authority: ctx.accounts.mint.to_account_info(),
+                    // authority: ctx.accounts.mint.to_account_info(),
+                    authority: ctx.accounts.payer.to_account_info(),
                     to: ctx.accounts.destination.to_account_info(),
                     mint: ctx.accounts.mint.to_account_info(),
                 },
@@ -140,23 +142,23 @@ pub mod omerta_solana_spl {
     }
 
 
-    // pub fn change_mint_authority(
-    //     ctx: Context<ChangeMintAuthority>,
-    //     new_authority: Pubkey,
-    // ) -> Result<()> {
-    //     anchor_spl::token::set_authority(
-    //         CpiContext::new(
-    //             ctx.accounts.token_program.to_account_info(),
-    //             SetAuthority {
-    //                 current_authority: ctx.accounts.current_authority.to_account_info(),
-    //                 account_or_mint:ctx.accounts.from_ata.to_account_info() 
-    //             },
-    //         ),
-    //         anchor_spl::token::spl_token::instruction::AuthorityType::MintTokens,
-    //         Some(new_authority),
-    //     )?;
-    //     Ok(())
-    // }
+    pub fn change_mint_authority(
+        ctx: Context<ChangeMintAuthority>,
+        new_authority: Pubkey,
+    ) -> Result<()> {
+        anchor_spl::token::set_authority(
+            CpiContext::new(
+                ctx.accounts.token_program.to_account_info(),
+                SetAuthority {
+                    current_authority: ctx.accounts.current_authority.to_account_info(),
+                    account_or_mint:ctx.accounts.mint.to_account_info() 
+                },
+            ),
+            anchor_spl::token::spl_token::instruction::AuthorityType::MintTokens,
+            Some(new_authority),
+        )?;
+        Ok(())
+    }
 }
 
 
@@ -167,6 +169,15 @@ enum OmertaError {
 }
 
 
+
+#[derive(AnchorSerialize, AnchorDeserialize, Debug, Clone)]
+pub struct InitTokenParams {
+    pub name: String,
+    pub symbol: String,
+    pub uri: String,
+    pub decimals: u8,
+}
+
 #[derive(Accounts)]
 #[instruction(
     params: InitTokenParams
@@ -175,14 +186,16 @@ pub struct InitToken<'info> {
     /// CHECK: New Metaplex Account being created
     #[account(mut)]
     pub metadata: UncheckedAccount<'info>,
+
+    // The PDA is both the address of the mint account and the mint authority
     #[account(
         init,
         seeds = [MIN_SEED],
         bump,
         payer = payer,
         mint::decimals = params.decimals,
-        mint::authority = mint,
-        // mint::authority = payer.key(),
+        // mint::authority = mint,
+        mint::authority = payer.key(),
     )]
     pub mint: Account<'info, Mint>,
     #[account(mut)]
@@ -199,9 +212,12 @@ pub struct MintTokens<'info> {
         mut,
         seeds = [MIN_SEED],
         bump,
-        mint::authority = mint,
+        mint::authority = payer.key(),
     )]
     pub mint: Account<'info, Mint>,
+
+
+    // create ATA if it doesn't exist
     #[account(
         init_if_needed,
         payer = payer,
@@ -222,8 +238,10 @@ pub struct TransferToken<'info> {
 
     #[account(mut)]
     pub from_ata: Account<'info, TokenAccount>,
-       #[account(mut)]
+    #[account(mut)]
     pub mint: Account<'info, Mint>,
+
+    // create ATA if it doesn't exist
     #[account(
         init_if_needed,
         payer = from,
@@ -239,13 +257,7 @@ pub struct TransferToken<'info> {
     pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Debug, Clone)]
-pub struct InitTokenParams {
-    pub name: String,
-    pub symbol: String,
-    pub uri: String,
-    pub decimals: u8,
-}
+
 
 
 #[derive(Accounts)]
@@ -276,15 +288,15 @@ pub struct BurnTokens<'info> {
 }
 
 
-// #[derive(Accounts)]
-// pub struct ChangeMintAuthority<'info> {
-//     #[account(mut)]
-//     pub from_ata: Account<'info, TokenAccount>,
+#[derive(Accounts)]
+pub struct ChangeMintAuthority<'info> {
+    #[account(mut)]
+    pub mint: Account<'info, Mint>,
 
-//     pub current_authority: Signer<'info>, // Current mint authority must sign the transaction
-//     pub system_program: Program<'info, System>,
-//     pub token_program: Program<'info, Token>,
-//     pub associated_token_program: Program<'info, AssociatedToken>,
-// }
+    pub current_authority: Signer<'info>, // Current mint authority must sign the transaction
+    pub system_program: Program<'info, System>,
+    pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
+}
 
 

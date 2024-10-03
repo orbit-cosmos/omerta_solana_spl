@@ -50,7 +50,9 @@ describe("OmertaSolanaSpl", async() => {
     const payer = pg.provider.publicKey;
     const reciever = anchor.web3.Keypair.generate()
     const account3 = anchor.web3.Keypair.generate()
-    const mintAmount = 100_000_000_000;
+    const mintAmount = 100_000_000_000 - 1;
+    const tokenTotalSupply = 100_000_000_000;
+    const burnAmount = 2;
 
     const metadata = {
       name: "lamport Token",
@@ -104,31 +106,7 @@ describe("OmertaSolanaSpl", async() => {
 
     });
   
-    it("mint tokens fail", async () => {
 
-      const destination =  payer_ata;
-      
-      const context = {
-        mint,
-        destination,
-        payer,
-        rent: web3.SYSVAR_RENT_PUBKEY,
-        systemProgram: web3.SystemProgram.programId,
-        tokenProgram: anchor.utils.token.TOKEN_PROGRAM_ID,
-        associatedTokenProgram: anchor.utils.token.ASSOCIATED_PROGRAM_ID,
-      };
-      try{
-          await pg.methods
-            .mintTokens(new BN(((mintAmount+1) * 10 ** metadata.decimals).toString()))
-            .accounts(context)
-            .rpc();
-      }catch(e){
-          if (e instanceof anchor.AnchorError){
-          assert(e.message.includes("CapExceed"))
-        }
-      }
-  
-    });
     
     it("mint tokens", async () => {
 
@@ -157,7 +135,7 @@ describe("OmertaSolanaSpl", async() => {
       
       const postBalance = await getSplBalance(pg,destination)
       assert.equal(
-        mintAmount,
+        preBalance+mintAmount,
         postBalance
       );
 
@@ -375,7 +353,7 @@ describe("OmertaSolanaSpl", async() => {
     });
 
     it("burn tokens", async () => {
-      const burnAmount = 2;
+    
       const preTotalSupply = await pg.provider.connection.getTokenSupply(mint)
      const reciever_ata = anchor.utils.token.associatedAddress({
         mint: mint,
@@ -416,26 +394,89 @@ describe("OmertaSolanaSpl", async() => {
 
       });
 
+      it("mint tokens fail", async () => {
 
+        const destination =  payer_ata;
+        
+        const context = {
+          mint,
+          destination,
+          payer,
+          rent: web3.SYSVAR_RENT_PUBKEY,
+          systemProgram: web3.SystemProgram.programId,
+          tokenProgram: anchor.utils.token.TOKEN_PROGRAM_ID,
+          associatedTokenProgram: anchor.utils.token.ASSOCIATED_PROGRAM_ID,
+        };
+        try{
+            await pg.methods
+              .mintTokens(new BN(((mintAmount+2) * 10 ** metadata.decimals).toString()))
+              .accounts(context)
+              .rpc();
+        }catch(e){
+            if (e instanceof anchor.AnchorError){
+            assert(e.message.includes("CapExceed"))
+          }
+        }
+    
+      });
 
-      // it("change mint authority", async () => {
+      it("change mint authority", async () => {
        
   
-      //   const context = {
-      //     fromAta:payer_ata,
-      //     currentAuthority:payer,
-      //     systemProgram: web3.SystemProgram.programId,
-      //     tokenProgram: anchor.utils.token.TOKEN_PROGRAM_ID,
-      //     associatedTokenProgram: anchor.utils.token.ASSOCIATED_PROGRAM_ID,
-      //   };
+        const context = {
+          mint:mint,
+          currentAuthority:payer,
+          systemProgram: web3.SystemProgram.programId,
+          tokenProgram: anchor.utils.token.TOKEN_PROGRAM_ID,
+          associatedTokenProgram: anchor.utils.token.ASSOCIATED_PROGRAM_ID,
+        };
         
 
-      //   await pg.methods
-      //     .changeMintAuthority(reciever.publicKey)
-      //     .accounts(context)
-      //     .rpc();
+        await pg.methods
+          .changeMintAuthority(reciever.publicKey)
+          .accounts(context)
+          .rpc();
 
-      //   });
+          const reciever_ata = anchor.utils.token.associatedAddress({
+            mint: mint,
+            owner: reciever.publicKey,
+          });
+
+          const context1 = {
+            mint,
+            destination:reciever_ata,
+            payer:reciever.publicKey,
+            rent: web3.SYSVAR_RENT_PUBKEY,
+            systemProgram: web3.SystemProgram.programId,
+            tokenProgram: anchor.utils.token.TOKEN_PROGRAM_ID,
+            associatedTokenProgram: anchor.utils.token.ASSOCIATED_PROGRAM_ID,
+          };
+      
+          const receiverPreBalance = 
+          await getSplBalance(pg,reciever_ata)
+
+          await pg.methods
+            .mintTokens(new BN((1 * 10 ** metadata.decimals).toString()))
+            .accounts(context1)
+            .signers([reciever])
+            .rpc();
+          
+          
+            const receiverPostBalance = 
+            await getSplBalance(pg,reciever_ata)
+  
+            assert.equal(
+              receiverPreBalance+1,
+              receiverPostBalance,
+            );
+          
+
+            const totalSupply = await pg.provider.connection.getTokenSupply(mint)
+            assert.equal(
+              (tokenTotalSupply  - burnAmount )* 10 ** metadata.decimals,
+              totalSupply.value.amount
+            );
+        });
 
 
     });
