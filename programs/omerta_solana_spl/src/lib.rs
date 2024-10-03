@@ -1,29 +1,25 @@
 use anchor_lang::prelude::*;
 
 use anchor_spl::{
-    associated_token::AssociatedToken,
     metadata::{
         create_metadata_accounts_v3, mpl_token_metadata::types::DataV2, CreateMetadataAccountsV3,
-        Metadata,
     },
-    token::{Mint, Token, TokenAccount, MintTo, Burn,Transfer, Approve, SetAuthority},
+    token::{MintTo, Burn,Transfer, Approve, SetAuthority},
 };
+mod states;
+mod errors;
+mod constants;
 
+use crate::states::*;
+use crate::errors::*;
 
+use constants::*;
 
 declare_id!("8SjEb93bjt9VrcdYDpzLiqpTycp7GgLM3pHQBAHE6ELP");
-
-pub const MAX_CAP: u64 = 100_000_000_000_000_000; // 6 decimals
-pub const MIN_SEED:&[u8] = "omerta-mint".as_bytes();
-
-
 
 
 #[program]
 pub mod omerta_solana_spl {
-
-
-    
 
     use super::*;
  
@@ -141,11 +137,7 @@ pub mod omerta_solana_spl {
         Ok(())
     }
 
-
-    pub fn change_mint_authority(
-        ctx: Context<ChangeMintAuthority>,
-        new_authority: Pubkey,
-    ) -> Result<()> {
+    pub fn change_mint_authority(ctx: Context<ChangeMintAuthority>,new_authority: Pubkey) -> Result<()> {
         anchor_spl::token::set_authority(
             CpiContext::new(
                 ctx.accounts.token_program.to_account_info(),
@@ -154,149 +146,12 @@ pub mod omerta_solana_spl {
                     account_or_mint:ctx.accounts.mint.to_account_info() 
                 },
             ),
-            anchor_spl::token::spl_token::instruction::AuthorityType::MintTokens,
+            anchor_spl::token::spl_token::instruction::AuthorityType::MintTokens, // AuthorityType is an enum
             Some(new_authority),
         )?;
         Ok(())
     }
 }
 
-
-#[error_code]
-enum OmertaError {
-    #[msg("Can not mint more, Cap Exceed")]
-    CapExceed,
-}
-
-
-
-#[derive(AnchorSerialize, AnchorDeserialize, Debug, Clone)]
-pub struct InitTokenParams {
-    pub name: String,
-    pub symbol: String,
-    pub uri: String,
-    pub decimals: u8,
-}
-
-#[derive(Accounts)]
-#[instruction(
-    params: InitTokenParams
-)]
-pub struct InitToken<'info> {
-    /// CHECK: New Metaplex Account being created
-    #[account(mut)]
-    pub metadata: UncheckedAccount<'info>,
-
-    // The PDA is both the address of the mint account and the mint authority
-    #[account(
-        init,
-        seeds = [MIN_SEED],
-        bump,
-        payer = payer,
-        mint::decimals = params.decimals,
-        // mint::authority = mint,
-        mint::authority = payer.key(),
-    )]
-    pub mint: Account<'info, Mint>,
-    #[account(mut)]
-    pub payer: Signer<'info>,
-    pub rent: Sysvar<'info, Rent>,
-    pub system_program: Program<'info, System>,
-    pub token_program: Program<'info, Token>,
-    pub token_metadata_program: Program<'info, Metadata>,
-}
-
-#[derive(Accounts)]
-pub struct MintTokens<'info> {
-    #[account(
-        mut,
-        seeds = [MIN_SEED],
-        bump,
-        mint::authority = payer.key(),
-    )]
-    pub mint: Account<'info, Mint>,
-
-
-    // create ATA if it doesn't exist
-    #[account(
-        init_if_needed,
-        payer = payer,
-        associated_token::mint = mint,
-        associated_token::authority = payer,
-    )]
-    pub destination: Account<'info, TokenAccount>,
-    
-    #[account(mut)]
-    pub payer: Signer<'info>,
-    pub system_program: Program<'info, System>,
-    pub token_program: Program<'info, Token>,
-    pub associated_token_program: Program<'info, AssociatedToken>,
-}
-
-#[derive(Accounts)]
-pub struct TransferToken<'info> {
-
-    #[account(mut)]
-    pub from_ata: Account<'info, TokenAccount>,
-    #[account(mut)]
-    pub mint: Account<'info, Mint>,
-
-    // create ATA if it doesn't exist
-    #[account(
-        init_if_needed,
-        payer = from,
-        associated_token::mint = mint,
-        associated_token::authority = to,
-    )]
-    pub to_ata: Account<'info, TokenAccount>,
-    #[account(mut)]
-    pub from: Signer<'info>,
-    pub to:  SystemAccount<'info>,  
-    pub system_program: Program<'info, System>,
-    pub token_program: Program<'info, Token>,
-    pub associated_token_program: Program<'info, AssociatedToken>,
-}
-
-
-
-
-#[derive(Accounts)]
-pub struct ApproveToken<'info> {
-
-    #[account(mut)]
-    pub from_ata: Account<'info, TokenAccount>,
-
-    pub from: Signer<'info>,
-  
-    /// CHECK: This is an unchecked account because the delegate doesn't need to be of any specific type.
-    pub delegate: UncheckedAccount<'info>,  
- 
-    pub token_program: Program<'info, Token>,
-}
-
-
-#[derive(Accounts)]
-pub struct BurnTokens<'info> {
-    #[account(mut)]
-    pub mint: Account<'info, Mint>,
-
-    #[account(mut)]
-    pub from_ata: Account<'info, TokenAccount>,
-
-    pub payer: Signer<'info>,
-    pub token_program: Program<'info, Token>,
-}
-
-
-#[derive(Accounts)]
-pub struct ChangeMintAuthority<'info> {
-    #[account(mut)]
-    pub mint: Account<'info, Mint>,
-
-    pub current_authority: Signer<'info>, // Current mint authority must sign the transaction
-    pub system_program: Program<'info, System>,
-    pub token_program: Program<'info, Token>,
-    pub associated_token_program: Program<'info, AssociatedToken>,
-}
 
 
