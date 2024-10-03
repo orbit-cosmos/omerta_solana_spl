@@ -6,19 +6,27 @@ use anchor_spl::{
         create_metadata_accounts_v3, mpl_token_metadata::types::DataV2, CreateMetadataAccountsV3,
         Metadata,
     },
-    token::{Mint, Token, TokenAccount, MintTo, Burn,Transfer, Approve},
+    token::{Mint, Token, TokenAccount, MintTo, Burn,Transfer, Approve, /*SetAuthority*/},
 };
+
+
 
 declare_id!("8SjEb93bjt9VrcdYDpzLiqpTycp7GgLM3pHQBAHE6ELP");
 
 pub const MAX_CAP: u64 = 100_000_000_000_000_000; // 6 decimals
-pub const MIN_SEED:&[u8] = "mint".as_bytes();
+pub const MIN_SEED:&[u8] = "omerta-mint".as_bytes();
+
+
+
 
 #[program]
 pub mod omerta_solana_spl {
 
-    use super::*;
 
+    
+
+    use super::*;
+ 
     pub fn initialize(ctx: Context<InitToken>, metadata: InitTokenParams) -> Result<()> {
         // PDA seeds and bump to "sign" for CPI
         let seeds = &[MIN_SEED, &[ctx.bumps.mint]];
@@ -131,7 +139,24 @@ pub mod omerta_solana_spl {
         Ok(())
     }
 
-  
+
+    // pub fn change_mint_authority(
+    //     ctx: Context<ChangeMintAuthority>,
+    //     new_authority: Pubkey,
+    // ) -> Result<()> {
+    //     anchor_spl::token::set_authority(
+    //         CpiContext::new(
+    //             ctx.accounts.token_program.to_account_info(),
+    //             SetAuthority {
+    //                 current_authority: ctx.accounts.current_authority.to_account_info(),
+    //                 account_or_mint:ctx.accounts.from_ata.to_account_info() 
+    //             },
+    //         ),
+    //         anchor_spl::token::spl_token::instruction::AuthorityType::MintTokens,
+    //         Some(new_authority),
+    //     )?;
+    //     Ok(())
+    // }
 }
 
 
@@ -140,6 +165,7 @@ enum OmertaError {
     #[msg("Can not mint more, Cap Exceed")]
     CapExceed,
 }
+
 
 #[derive(Accounts)]
 #[instruction(
@@ -156,6 +182,7 @@ pub struct InitToken<'info> {
         payer = payer,
         mint::decimals = params.decimals,
         mint::authority = mint,
+        // mint::authority = payer.key(),
     )]
     pub mint: Account<'info, Mint>,
     #[account(mut)]
@@ -202,13 +229,11 @@ pub struct TransferToken<'info> {
         payer = from,
         associated_token::mint = mint,
         associated_token::authority = to,
-        associated_token::token_program = token_program
     )]
     pub to_ata: Account<'info, TokenAccount>,
     #[account(mut)]
     pub from: Signer<'info>,
-    /// CHECK: recipient address
-    pub to:  UncheckedAccount<'info>,  
+    pub to:  SystemAccount<'info>,  
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
@@ -249,3 +274,17 @@ pub struct BurnTokens<'info> {
     pub payer: Signer<'info>,
     pub token_program: Program<'info, Token>,
 }
+
+
+// #[derive(Accounts)]
+// pub struct ChangeMintAuthority<'info> {
+//     #[account(mut)]
+//     pub from_ata: Account<'info, TokenAccount>,
+
+//     pub current_authority: Signer<'info>, // Current mint authority must sign the transaction
+//     pub system_program: Program<'info, System>,
+//     pub token_program: Program<'info, Token>,
+//     pub associated_token_program: Program<'info, AssociatedToken>,
+// }
+
+

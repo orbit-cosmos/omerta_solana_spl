@@ -45,7 +45,7 @@ describe("OmertaSolanaSpl", async() => {
       "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s" // metaplex metadata program id
     )
 
-    const MINT_SEED = "mint";
+    const MINT_SEED = "omerta-mint";
   
     const payer = pg.provider.publicKey;
     const reciever = anchor.web3.Keypair.generate()
@@ -415,6 +415,29 @@ describe("OmertaSolanaSpl", async() => {
 
 
       });
+
+
+
+      // it("change mint authority", async () => {
+       
+  
+      //   const context = {
+      //     fromAta:payer_ata,
+      //     currentAuthority:payer,
+      //     systemProgram: web3.SystemProgram.programId,
+      //     tokenProgram: anchor.utils.token.TOKEN_PROGRAM_ID,
+      //     associatedTokenProgram: anchor.utils.token.ASSOCIATED_PROGRAM_ID,
+      //   };
+        
+
+      //   await pg.methods
+      //     .changeMintAuthority(reciever.publicKey)
+      //     .accounts(context)
+      //     .rpc();
+
+      //   });
+
+
     });
     
     
