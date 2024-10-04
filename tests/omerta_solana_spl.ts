@@ -102,12 +102,40 @@ describe("OmertaSolanaSpl", async() => {
         .rpc();
   
       const newInfo = await pg.provider.connection.getAccountInfo(mint);
-      assert(newInfo);
+      assert(newInfo)
+      const metadataString = await pg.provider.connection.getAccountInfo(metadataAddress);
+      assert(metadataString.data.toString().includes("lamport Token"));
+      assert(metadataString.data.toString().includes("LMT"));
 
     });
   
 
-    
+    it("change metadata", async () => {
+      const newMetadata = {
+        name: "omerta Token",
+        symbol: "OMERTA",
+        uri: "https://5vfxc4tr6xoy23qefqbj4qx2adzkzapneebanhcalf7myvn5gzja.arweave.net/7UtxcnH13Y1uBCwCnkL6APKsge0hAgacQFl-zFW9NlI",
+        decimals: 6,
+      };
+      const context = {
+        metadata: metadataAddress,
+        mint,
+        payer,
+        systemProgram: web3.SystemProgram.programId,
+        tokenProgram: anchor.utils.token.TOKEN_PROGRAM_ID,
+        tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID,
+      };
+  
+      await pg.methods
+        .updateMetadata(newMetadata)
+        .accounts(context)
+        .rpc();
+  
+        const newInfo = await pg.provider.connection.getAccountInfo(metadataAddress);
+        assert(newInfo.data.toString().includes("omerta Token"));
+        assert(newInfo.data.toString().includes("OMERTA"));
+      });
+
     it("mint tokens", async () => {
 
       const destination =  payer_ata;
@@ -415,6 +443,8 @@ describe("OmertaSolanaSpl", async() => {
         }catch(e){
             if (e instanceof anchor.AnchorError){
             assert(e.message.includes("CapExceed"))
+          }else{
+            assert(false);
           }
         }
     
@@ -478,6 +508,8 @@ describe("OmertaSolanaSpl", async() => {
             );
         });
 
+
+    
 
     });
     

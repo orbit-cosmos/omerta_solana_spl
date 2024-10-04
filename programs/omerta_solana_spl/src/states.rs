@@ -145,3 +145,20 @@ pub struct ChangeMintAuthority<'info> {
 }
 
 
+#[derive(Accounts)]
+#[instruction(
+    params: InitTokenParams
+)]
+pub struct UpdateMetadata<'info> {
+  /// CHECK: New Metaplex Account being created
+  #[account(mut)]
+  pub metadata: UncheckedAccount<'info>,
+  #[account(mut)]
+  pub mint: Account<'info, Mint>,
+  
+  #[account(mut)]
+  pub payer: Signer<'info>,
+  pub system_program: Program<'info, System>,
+  pub token_program: Program<'info, Token>,
+  pub token_metadata_program: Program<'info, Metadata>,
+}
