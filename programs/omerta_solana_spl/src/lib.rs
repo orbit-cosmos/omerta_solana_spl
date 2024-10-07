@@ -15,7 +15,7 @@ use crate::errors::*;
 
 use constants::*;
 
-declare_id!("8SjEb93bjt9VrcdYDpzLiqpTycp7GgLM3pHQBAHE6ELP");
+declare_id!("GamePwTMVwuMij2eagMjQtwVKEPv9xm6w1SciZ4XH24V");
 
 
 #[program]

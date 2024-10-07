@@ -1,3 +1,9 @@
+# Omerta SPL Token
+
+[Omerta Website](https://www.omertagame.com)
+
+[Omerta Whitepaper](https://docs.omertagame.com/whitepaper)
+
 ## install solana CLI 
 
 ```sh -c "$(curl -sSfL https://release.solana.com/v1.18.12/install)"```
@@ -7,6 +13,7 @@
 
 ```solana-install update```
 
+for more information goto
 - https://docs.solanalabs.com/cli/install
 
 
@@ -17,22 +24,38 @@
 - ```avm use latest```
 - ```anchor --version```
 
+for more information goto
 - https://www.anchor-lang.com/docs/installation
 
 
-## install project dependencies
-
-```yarn```
 
 ## generate a new keypair
 
-```solana-keygen new -o /home/asad/.config/solana/id.json```
+```shell
+solana-keygen new -o /home/asad/.config/solana/id.json
+```
+
+```shell
+solana-keygen grind --starts-with Omerta:1 --ignore-case
+```
+
+
+## install project dependencies
+```shell
+yarn
+```
 
 ## build the project
-```anchor clean```
-```anchor build```
+```shell
+anchor clean
+```
+```shell
+anchor build
+```
 
 ## run test
 
-```anchor test```
+```shell
+anchor test
+```
 
