@@ -34,10 +34,11 @@ for more information goto
 ```shell
 solana-keygen new -o /home/asad/.config/solana/id.json
 ```
-
+## generate custom keypair
 ```shell
-solana-keygen grind --starts-with Omerta:1 --ignore-case
+solana-keygen grind --starts-with Game:1 --ignore-case
 ```
+past the key in ```target/deploy/omerta_solana_spl-keypair.json``` and change ```declare_id```
 
 
 ## install project dependencies
