@@ -21,11 +21,9 @@ declare_id!("GamePwTMVwuMij2eagMjQtwVKEPv9xm6w1SciZ4XH24V");
 #[program]
 pub mod omerta_solana_spl {
 
-
-
     use super::*;
  
-    pub fn initialize(ctx: Context<InitToken>, metadata: InitTokenParams) -> Result<()> {
+    pub fn init_token(ctx: Context<InitToken>, metadata: InitTokenParams) -> Result<()> {
         // PDA seeds and bump to "sign" for CPI
         let seeds = &[MIN_SEED, &[ctx.bumps.mint]];
         let signer = [&seeds[..]];
@@ -67,7 +65,6 @@ pub mod omerta_solana_spl {
 
         Ok(())
     }
-
 
     pub fn update_metadata(ctx: Context<UpdateMetadata>, new_metadata: InitTokenParams) -> Result<()> {
 

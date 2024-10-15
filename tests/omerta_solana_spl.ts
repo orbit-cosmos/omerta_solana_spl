@@ -57,7 +57,7 @@ describe("OmertaSolanaSpl", async() => {
     const metadata = {
       name: "lamport Token",
       symbol: "LMT",
-      uri: "https://5vfxc4tr6xoy23qefqbj4qx2adzkzapneebanhcalf7myvn5gzja.arweave.net/7UtxcnH13Y1uBCwCnkL6APKsge0hAgacQFl-zFW9NlI",
+      uri: "https://pump.mypinata.cloud/ipfs/QmeSzchzEPqCU1jwTnsipwcBAeH7S4bmVvFGfF65iA1BY1?img-width=128&img-dpr=2&img-onerror=redirect",
       decimals: 6,
     };
 
@@ -97,7 +97,7 @@ describe("OmertaSolanaSpl", async() => {
       };
   
       await pg.methods
-        .initialize(metadata)
+        .initToken(metadata)
         .accounts(context)
         .rpc();
   
@@ -114,7 +114,7 @@ describe("OmertaSolanaSpl", async() => {
       const newMetadata = {
         name: "omerta Token",
         symbol: "OMERTA",
-        uri: "https://5vfxc4tr6xoy23qefqbj4qx2adzkzapneebanhcalf7myvn5gzja.arweave.net/7UtxcnH13Y1uBCwCnkL6APKsge0hAgacQFl-zFW9NlI",
+        uri: "https://pump.mypinata.cloud/ipfs/QmeSzchzEPqCU1jwTnsipwcBAeH7S4bmVvFGfF65iA1BY1?img-width=128&img-dpr=2&img-onerror=redirect",
         decimals: 6,
       };
       const context = {
