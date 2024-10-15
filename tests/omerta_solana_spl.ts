@@ -3,7 +3,6 @@ import * as anchor from "@coral-xyz/anchor";
 import * as web3 from "@solana/web3.js"
 import assert from "assert"
 import { Program } from "@coral-xyz/anchor";
-import {BN} from "bn.js"
 import { createAssociatedTokenAccount } from "@solana/spl-token";
 
 async function confirmTransaction(tx:string) {
@@ -157,7 +156,7 @@ describe("OmertaSolanaSpl", async() => {
       };
   
       await pg.methods
-        .mintTokens(new BN((mintAmount * 10 ** metadata.decimals).toString()))
+        .mintTokens(new anchor.BN((mintAmount * 10 ** metadata.decimals).toString()))
         .accounts(context)
         .rpc();
       
@@ -219,7 +218,7 @@ describe("OmertaSolanaSpl", async() => {
       };
   
        await pg.methods
-        .transfer(new BN((transferAmount * 10 ** metadata.decimals).toString()))
+        .transfer(new anchor.BN((transferAmount * 10 ** metadata.decimals).toString()))
         .accounts(context)
         .rpc();
      
@@ -288,7 +287,7 @@ describe("OmertaSolanaSpl", async() => {
       };
   
        await pg.methods
-        .transfer(new BN((transferAmount * 10 ** metadata.decimals).toString()))
+        .transfer(new anchor.BN((transferAmount * 10 ** metadata.decimals).toString()))
         .accounts(context)
         .rpc();
      
@@ -333,7 +332,7 @@ describe("OmertaSolanaSpl", async() => {
       };
       
       await pg.methods
-        .approve(new BN((approveAmount * 10 ** metadata.decimals).toString()))
+        .approve(new anchor.BN((approveAmount * 10 ** metadata.decimals).toString()))
         .accounts(context)
         .rpc();
 
@@ -357,7 +356,7 @@ describe("OmertaSolanaSpl", async() => {
         await getSplBalance(pg,from_ata)
 
      await pg.methods
-        .transfer(new BN((approveAmount * 10 ** metadata.decimals).toString()))
+        .transfer(new anchor.BN((approveAmount * 10 ** metadata.decimals).toString()))
         .accounts(context1)
         .signers([reciever])
         .rpc();
@@ -400,7 +399,7 @@ describe("OmertaSolanaSpl", async() => {
     
 
       await pg.methods
-        .burn(new BN((burnAmount * 10 ** metadata.decimals).toString()))
+        .burn(new anchor.BN((burnAmount * 10 ** metadata.decimals).toString()))
         .accounts(context)
         .signers([reciever])
         .rpc();
@@ -437,7 +436,7 @@ describe("OmertaSolanaSpl", async() => {
         };
         try{
             await pg.methods
-              .mintTokens(new BN(((mintAmount+2) * 10 ** metadata.decimals).toString()))
+              .mintTokens(new anchor.BN(((mintAmount+2) * 10 ** metadata.decimals).toString()))
               .accounts(context)
               .rpc();
         }catch(e){
@@ -486,7 +485,7 @@ describe("OmertaSolanaSpl", async() => {
           await getSplBalance(pg,reciever_ata)
 
           await pg.methods
-            .mintTokens(new BN((1 * 10 ** metadata.decimals).toString()))
+            .mintTokens(new anchor.BN((1 * 10 ** metadata.decimals).toString()))
             .accounts(context1)
             .signers([reciever])
             .rpc();
