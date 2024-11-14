@@ -61,5 +61,7 @@ anchor test
 ```
 
 
+# if face build errors see this stack overflow answer
 
+https://stackoverflow.com/questions/78483279/tokenaccount-doesnt-implement-discriminator
 
